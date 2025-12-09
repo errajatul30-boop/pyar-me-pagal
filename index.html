@@ -1,0 +1,43 @@
+emit('register', { id: myId, displayName: name || myId });
+
+      if (!('geolocation' in navigator)) { updateStatus('Geolocation not supported'); return; }
+      updateStatus('Requesting permission...');
+
+      watchId = navigator.geolocation.watchPosition((pos) => {
+        const payload = {
+          id: myId,
+          displayName: name || myId,
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          accuracy: pos.coords.accuracy,
+          timestamp: pos.timestamp || Date.now()
+        };
+        socket.emit('position', payload);
+        addOrUpdateMarker(payload);
+        map.setView([payload.lat, payload.lng], 13);
+        updateStatus(`Tracking: ${payload.lat.toFixed(5)}, ${payload.lng.toFixed(5)} (acc ${payload.accuracy}m)`);
+      }, (err) => {
+        updateStatus('Geolocation error: ' + err.message);
+      }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 });
+
+      startBtn.disabled = true;
+      stopBtn.disabled = false;
+      displayNameInput.disabled = true;
+    });
+
+    stopBtn.addEventListener('click', () => {
+      if (watchId !== null) { navigator.geolocation.clearWatch(watchId); watchId = null; }
+      if (myId) socket.emit('stopTracking', { id: myId });
+      updateStatus('Stopped');
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+      displayNameInput.disabled = false;
+      myId = null;
+    });
+
+    window.addEventListener('beforeunload', () => {
+      if (myId) socket.emit('stopTracking', { id: myId });
+    });
+  </script>
+</body>
+</html>
